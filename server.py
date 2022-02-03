@@ -14,23 +14,30 @@ import sys
 # Used for Current Time
 from datetime import datetime
 
+
 # fileServer child Class, whose super class is socketServer.TCPServer
 class fileServer(socketserver.TCPServer):
 
     # __init__ ("fileServer" child class)
     def __init__(self, serverIP, childHandler):
+        #######################################
+        # Create Unique Server Variables
+        #######################################
+
+        # Valid Users and Password
+        self.authorizedUsers = ["admin", "password", "bob", "1234", "alice", "abcd"]
+
+        # Users Online
+        self.activeUsers = []
 
         #######################################
         # Set Logging Objects
         #######################################
 
-        # Set logging file
-        #logging.config.fileConfig('fileServer.log')
-
         # Set logging configuration
         logging.basicConfig(filename='fileServer.log', level=logging.DEBUG, filemode='w',
-        format='%(asctime)s\t\tLogger: %(name)s\t\tLevel: %(levelname)s\t\tEvent: %(message)s',
-        datefmt='%Y:%m:%d %H:%M:%S')
+                            format='%(asctime)s\t\tLogger: %(name)s\t\tLevel: %(levelname)s\t\tEvent: %(message)s',
+                            datefmt='%Y:%m:%d %H:%M:%S')
 
         # Create Logger
         self.serverLog = logging.getLogger("Server")
@@ -44,10 +51,10 @@ class fileServer(socketserver.TCPServer):
         print(date, end='')
         self.serverLog.debug("File Server Started")
 
-
         # Call Super Class "TCPServer", to __init__ Child TCPServer Class
         socketserver.TCPServer.__init__(self, serverIP, childHandler)
         return
+
 
 # fileServerHandler child class, whose super class is socketserver.BaseRequestHandler
 # Class instance to handle server requests
@@ -55,18 +62,14 @@ class fileServerHandler(socketserver.BaseRequestHandler):
 
     # __init__ ("fileServerHandler" child class)
     def __init__(self, requestType, clientIP, serverIP):
-
         #######################################
         # Set Logging Objects
-        ##################
-
-        # Set logging file
-        #logging.config.fileConfig('fileServer.log')
+        #######################################
 
         # Set logging configuration
         logging.basicConfig(filename='fileServer.log', level=logging.DEBUG, filemode='w',
-        format='%(asctime)s\t\tLogger: %(name)s\t\tLevel: %(levelname)s\t\tEvent: %(message)s',
-        datefmt='%Y:%m:%d %H:%M:%S')
+                            format='%(asctime)s\t\tLogger: %(name)s\t\tLevel: %(levelname)s\t\tEvent: %(message)s',
+                            datefmt='%Y:%m:%d %H:%M:%S')
 
         # Create serverHandler Logger
         self.serverHandlerLog = logging.getLogger("Server Handler")
@@ -83,19 +86,23 @@ class fileServerHandler(socketserver.BaseRequestHandler):
         socketserver.BaseRequestHandler.__init__(self, requestType, clientIP, serverIP)
         return
 
-
     # NEEDED!!!
     # handle() method must be implemented to override the super class
     def handle(self):
-        data = self.request.recv(1024).strip()
+        print("Server handler looking for connection")
 
-        # just send back the same data, but upper-cased
-        self.request.sendall(data.upper())
+        data = self.request.recv(1024)
+        print("Data Received: %s" % data)
+
+        # Split data into an array
+        dataArray = data.split()
+
+        # Send back ACK
+        self.request.sendall("ACK")
         return
 
 
 if __name__ == '__main__':
-
     # Set Server IP
     serverHost = socket.gethostname()
     serverIP = socket.gethostbyname(serverHost)
@@ -106,3 +113,7 @@ if __name__ == '__main__':
     # Make fileServer() Object, with (socket) and fileServerHandler
     startFileServer = fileServer((serverIP, serverPort), fileServerHandler)
 
+    # fileServerHandler.request.recv(1024)
+    # Makes FileServer run indefinitely
+    # startFileServer.serve_forever()
+    # startFileServer.get_request()
