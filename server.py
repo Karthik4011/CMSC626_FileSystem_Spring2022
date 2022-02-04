@@ -1,5 +1,19 @@
 # Used to setup server handler
-import socketserver
+
+try:
+    import socketserver
+
+    OPERATE = True
+
+except:
+    print("Need Python3 to operate server")
+    OPERATE = False
+
+# To "exe" and binary file paths
+import shutil
+
+# Used to get OS Type
+import platform
 
 # Used to get serverIP
 import socket
@@ -13,6 +27,13 @@ import sys
 
 # Used for Current Time
 from datetime import datetime
+
+###############################################
+# Global Variables
+###############################################
+
+# Get operating system
+OS = platform.system()
 
 
 # fileServer child Class, whose super class is socketServer.TCPServer
@@ -48,7 +69,7 @@ class fileServer(socketserver.TCPServer):
 
         # Post to log, "File Server Started"
         date = datetime.now().strftime("DATE: %Y:%m:%d\tTIME: %H:%M:%S\t\tEVENT: ")
-        print(date, end='')
+        print("%s" % date, end="")
         self.serverLog.debug("File Server Started")
 
         # Call Super Class "TCPServer", to __init__ Child TCPServer Class
@@ -79,7 +100,7 @@ class fileServerHandler(socketserver.BaseRequestHandler):
         self.serverHandlerLog.addHandler(loggingHandler)
 
         # Post to log, "File Server Started"
-        print(datetime.now().strftime("DATE: %Y:%m:%d\tTIME: %H:%M:%S\t\tEVENT: "), end='')
+        print(datetime.now().strftime("DATE: %Y:%m:%d\tTIME: %H:%M:%S\t\tEVENT: "), end="")
         self.serverHandlerLog.info("File Handler Started")
 
         # Call Super Class "BaseRequestHandler", to __init__ Child Handler Class
@@ -102,18 +123,36 @@ class fileServerHandler(socketserver.BaseRequestHandler):
         return
 
 
+def windowsGetNotePadPath():
+    return shutil.which("notepad")
+
+
+def linuxGetNanoPath():
+    return shutil.which("nano")
+
+
 if __name__ == '__main__':
-    # Set Server IP
-    serverHost = socket.gethostname()
-    serverIP = socket.gethostbyname(serverHost)
 
-    # Set Port Number
-    serverPort = 50000
+    # If Python3 is setup, we can start server
+    if OPERATE:
 
-    # Make fileServer() Object, with (socket) and fileServerHandler
-    startFileServer = fileServer((serverIP, serverPort), fileServerHandler)
+        # Set Server IP
+        serverHost = socket.gethostname()
+        serverIP = socket.gethostbyname(serverHost)
 
-    # fileServerHandler.request.recv(1024)
-    # Makes FileServer run indefinitely
-    # startFileServer.serve_forever()
-    # startFileServer.get_request()
+        # Set Port Number
+        serverPort = 50000
+
+        # Make fileServer() Object, with (socket) and fileServerHandler
+        startFileServer = fileServer((serverIP, serverPort), fileServerHandler)
+
+        if OS == "Linux":
+            print(linuxGetNanoPath())
+
+        elif OS == "Windows":
+            print(windowsGetNotePadPath())
+
+        # fileServerHandler.request.recv(1024)
+        # Makes FileServer run indefinitely
+        # startFileServer.serve_forever()
+        # startFileServer.get_request()
