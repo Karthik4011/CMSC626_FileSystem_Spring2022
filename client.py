@@ -26,7 +26,6 @@ class ClientInfo():
         self.knownServerIPs.pop()
 
 
-
 # Display Help Menu
 def help():
     print("============================\n",
@@ -59,14 +58,14 @@ def connectServer(client):
     try:
         ClientInfo.makeSocket(client)
         print(">> Connected to server, enter command or type 'help'")
+        return True
 
     except Exception as e:
         print("Could not connect to \"%s\" on port \"%s\"\nError: %s\n\n" % (serverIP,
                                                                              client.knownServerPort, e))
         ClientInfo.popIP(client)
-        return
 
-    return
+    return False
 
 
 # Main
@@ -82,9 +81,9 @@ if __name__ == '__main__':
     # clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     # Initial server connection
-    connectServer(information)
+    intialConnection = connectServer(information)
 
-    while True:
+    while not intialConnection:
         print("Reattempt server connection?\n>> ", end='')
         clientRequest = input().lower()
 
@@ -94,7 +93,7 @@ if __name__ == '__main__':
             break
 
         elif clientRequest == "y" or clientRequest == "yes":
-            connectServer(information)
+            intialConnection = connectServer(information)
 
 
     # Client Menu script
@@ -105,65 +104,63 @@ if __name__ == '__main__':
         # Clear Screen
         os.system('cls' if os.name == 'nt' else 'clear')
 
-        match clientRequest:
+        if clientRequest == "h" or clientRequest == "help":
+            help()
 
-            case "h":
-                help()
+        elif clientRequest == "q":
+            # implement code to break server
+            print("Quit Not implemented")
+            # Close TCP connection
 
-            case "help":
-                help()
+        elif clientRequest == "r":
+            # implement code to READ new file
+            print("Quit Not implemented")
+            # Request to READ file in "current SEDFS path"
+            # Display result from server response
 
-            case "q":
-                # implement code to break server
-                print("Quit Not implemented")
-                # Close TCP connection
+        elif clientRequest == "w":
+            # implement code to WRITE to READ file
+            print("Write Not implemented")
+            # Look at 'current local path' for READ file
+            # Copy contents of READ file
+            # Request server to WRITE
+            # Send WRITE request
+            # Send currentReadPath
+            # Server responds with "GRANTED" or "NOT_VALID"
 
-            case "r":
-                # implement code to READ new file
-                print("Quit Not implemented")
-                # Request to READ file in "current SEDFS path"
-                # Display result from server response
+        elif clientRequest == "c":
+            # implement code to CREATE file/directory
+            print("Create New FILE/DIRECTORY Not implemented")
 
-            case "w":
-                # implement code to WRITE to READ file
-                print("Write Not implemented")
-                # Look at 'current local path' for READ file
-                # Copy contents of READ file
-                # Request server to WRITE
-                # Send WRITE request
-                # Send currentReadPath
-                # Server responds with "GRANTED" or "NOT_VALID"
+        elif clientRequest == "n":
+            # implement code to NAVIGATE to new directory
+            print("Navigate to Directory Not implemented")
+            # Ask user for path request
 
-            case "c":
-                # implement code to CREATE file/directory
-                print("Create New FILE/DIRECTORY Not implemented")
+        elif clientRequest == "b":
+            # implement code to WRITE to READ file
+            print("Move Back Not implemented")
+            # Request server to go back one directory
+            # Display server response (SUCCESS or FAILURE)
+            # Display new path
 
-            case "n":
-                # implement code to NAVIGATE to new directory
-                print("Navigate to Directory Not implemented")
-                # Ask user for path request
+        elif clientRequest == "l":
+            # implement code to WRITE to READ file
+            print("List Contents Not implemented")
+            # Request server to list current directory contents
+            # Diplay server response
 
-            case "b":
-                # implement code to WRITE to READ file
-                print("Move Back Not implemented")
-                # Request server to go back one directory
-                # Display server response (SUCCESS or FAILURE)
-                # Display new path
+        elif clientRequest == "d":
+            # implement code to DELETE file/directory
+            print("Delete Not implemented")
+            # Ask user for file to delete
+            # Send delete request to server
+            # !!! Server Should Only delete directory if empty !!
+            # Tell user status
 
-            case "l":
-                # implement code to WRITE to READ file
-                print("List Contents Not implemented")
-                # Request server to list current directory contents
-                # Diplay server response
-
-            case "d":
-                # implement code to DELETE file/directory
-                print("Delete Not implemented")
-                # Ask user for file to delete
-                # Send delete request to server
-                # !!! Server Should Only delete directory if empty !!
-                # Tell user status
-
-            case "s":
-                # implement code to display server information
-                print("Server Information Not implemented")
+        elif clientRequest == "s":
+            # implement code to display server information
+            print("Server Information Not implemented")
+            information.clientSocket.send("SYN".encode())
+            serverResponse = information.clientSocket.recv(1024).decode()
+            print("Server Response: %s", serverResponse)

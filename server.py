@@ -1,5 +1,7 @@
+################################################
+# Imports
+################################################
 # Used to setup server handler
-
 try:
     import socketserver
 
@@ -28,19 +30,32 @@ import sys
 # Used for Current Time
 from datetime import datetime
 
+# For threading processes
+import threading
+
+
+
+
+
 ###############################################
 # Global Variables
 ###############################################
-
 # Get operating system
 OS = platform.system()
 
 
-# fileServer child Class, whose super class is socketServer.TCPServer
+
+###############################################
+# Classes
+###############################################
+
+###############################################
+# fileServer child Class
+# Super class is socketServer.TCPServer
 class fileServer(socketserver.TCPServer):
 
     # __init__ ("fileServer" child class)
-    def __init__(self, serverIP, childHandler):
+    def __init__(self, IP, childHandler):
         #######################################
         # Create Unique Server Variables
         #######################################
@@ -50,6 +65,10 @@ class fileServer(socketserver.TCPServer):
 
         # Users Online
         self.activeUsers = []
+
+        # Save Port Number, IP
+        self.serverPort = 50000
+        self.serverIP = IP
 
         #######################################
         # Set Logging Objects
@@ -70,14 +89,17 @@ class fileServer(socketserver.TCPServer):
         # Post to log, "File Server Started"
         date = datetime.now().strftime("DATE: %Y:%m:%d\tTIME: %H:%M:%S\t\tEVENT: ")
         print("%s" % date, end="")
-        self.serverLog.debug("File Server Started")
+        self.serverLog.info("File Server Started\tNote: @IP: % s" % self.serverIP)
 
         # Call Super Class "TCPServer", to __init__ Child TCPServer Class
-        socketserver.TCPServer.__init__(self, serverIP, childHandler)
+        socketserver.TCPServer.__init__(self, (self.serverIP, self.serverPort), childHandler)
         return
 
 
-# fileServerHandler child class, whose super class is socketserver.BaseRequestHandler
+
+##############################################
+# fileServerHandler child class
+# Super class is socketserver.BaseRequestHandler
 # Class instance to handle server requests
 class fileServerHandler(socketserver.BaseRequestHandler):
 
@@ -110,27 +132,57 @@ class fileServerHandler(socketserver.BaseRequestHandler):
     # NEEDED!!!
     # handle() method must be implemented to override the super class
     def handle(self):
-        print("Server handler looking for connection")
 
-        data = self.request.recv(1024)
-        print("Data Received: %s" % data)
+        #print("Server handler looking for NEW connection")
+
+        # Receive Data
+        data = self.request.recv(1024).decode()
+
+        # Log About received data
+        self.serverHandlerLog.info("[+] New Connection Made, IP: %s, Port: %s" % self.client_address)
 
         # Split data into an array
         dataArray = data.split()
+        print("TEST: Client sent %s" % dataArray)
 
         # Send back ACK
-        self.request.sendall("ACK")
+        self.request.sendall("ACK".encode())
         return
 
 
-def windowsGetNotePadPath():
-    return shutil.which("notepad")
+##############################################
+# Super/Parent Class is Threading
+# Thread of a client
+class ThreadedClient(threading.Thread):
+
+    # __init__ of the child class
+    def __int__(self, clientIP, clientPort, clientSocket):
+        self.clientIP = clientIP
+        self.clientPort = clientPort
+        self.clientSocket = clientSocket
+
+        # call parent __init__
+        threading.Thread.__init__(self)
 
 
-def linuxGetNanoPath():
-    return shutil.which("nano")
 
 
+
+################################
+# Non class functions
+################################
+
+# Gets notepad on Windows
+def openTextEditor():
+    if OS == "Windows":
+        return shutil.which("notepad")
+
+    elif OS == "Linux":
+        return shutil.which("nano")
+
+
+
+# Main
 if __name__ == '__main__':
 
     # If Python3 is setup, we can start server
@@ -140,17 +192,16 @@ if __name__ == '__main__':
         serverHost = socket.gethostname()
         serverIP = socket.gethostbyname(serverHost)
 
-        # Set Port Number
-        serverPort = 50000
+
 
         # Make fileServer() Object, with (socket) and fileServerHandler
-        startFileServer = fileServer((serverIP, serverPort), fileServerHandler)
+        startFileServer = fileServer(serverIP, fileServerHandler)
 
-        if OS == "Linux":
-            print(linuxGetNanoPath())
+        startFileServer.serve_forever()
 
-        elif OS == "Windows":
-            print(windowsGetNotePadPath())
+
+
+
 
         # fileServerHandler.request.recv(1024)
         # Makes FileServer run indefinitely
