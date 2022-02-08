@@ -205,14 +205,37 @@ class fileServerHandler(socketserver.BaseRequestHandler):
     def getMessageSize(self):
         self.request.sendall("SEND NEXT MESSAGE LENGTH".encode())
         data = self.request.recv(1024).decode()
-        isINT = isinstance(data, int)
 
+        isINT = isinstance(data, int)
         if not isINT:
-            print("Error, Client %s, did not supply INT in getMessageSize" % self.client_address[0])
             return -1
 
         else:
             return data
+
+    # Returns a LIST, which is a PATH
+    def askPath(self):
+        self.request.sendall("PATH")
+        messageLength = self.getMessageSize()
+
+        if messageLength < 0:
+            print("Error, Client %s, did not supply SIZE in askPath()" % self.client_address[0])
+
+        clientPath = ""
+
+        # Use Default Path
+        if messageLength == 0:
+            clientPath.join(BaseServerPath)
+
+        # RECV path from client
+        while(messageLength > 0):
+            data = self.request.recv(1024).decode()
+            clientPath.join(data)
+            messageLength -= 1024
+
+        clientPath = clientPath.split('\\')
+
+        return clientPath
 
 
 ##############################################
