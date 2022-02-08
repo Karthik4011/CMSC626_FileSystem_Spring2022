@@ -47,6 +47,9 @@ modifyMutex = threading.Lock()
 numberOfMaxReaders = 20
 readSemaphore = threading.Semaphore(numberOfMaxReaders)
 
+# Users and Password
+authorizedUsers = ["admin", "password", "bob", "1234", "alice", "abcd"]
+
 
 ###############################################
 # Classes
@@ -62,9 +65,6 @@ class fileServer(socketserver.TCPServer):
         #######################################
         # Create Unique Server Variables
         #######################################
-
-        # Valid Users and Password
-        self.authorizedUsers = ["admin", "password", "bob", "1234", "alice", "abcd"]
 
         # Users Online
         self.activeUsers = []
@@ -136,19 +136,83 @@ class fileServerHandler(socketserver.BaseRequestHandler):
     def handle(self):
         # print("Server handler looking for NEW connection")
 
-        # Receive Data
+        # Receive USER info
         data = self.request.recv(1024).decode()
 
         # Log About received data
-        self.serverHandlerLog.info("[+] New Connection Made, IP: %s, Port: %s" % self.client_address)
+        self.serverHandlerLog.info("[+] New Connection Made, IP: %s, Port: %s Message: %s" %
+                                   (self.client_address[0], self.client_address[1], data))
+
+        # Look for authorized user
+        foundUser = False
+        passwordIndex = None
+        j = 0
+        for i in authorizedUsers:
+
+            j += 1
+            if i == data:
+                self.request.sendall("PASSWORD".encode())
+                foundUser = True
+                passwordIndex = j
+                break
+
+            i += 1
+            j += 1
+
+        # PASSWORD response from client
+        data = self.request.recv(1024).decode()
+
+        # if j > len(authorizedUsers) --> Then user does not exist
+        if j > len(authorizedUsers):
+            self.request.sendall("LOGIN_FAILED".encode())
+            return
+
+        # Else, "j" is within bounds of authorizedUsers
+        if data == authorizedUsers[j]:
+            self.request.sendall("LOGIN_SUCCESS".encode())
+
+        else:
+            self.request.sendall("LOGIN_FAILED".encode())
+            return
+
+        # Get userRequest
+        data = self.request.recv(1024).decode()
+
+        if data == "WRITE":
+            print("Server WRITE not implemented")
+
+        if data == "READ":
+            print("Server WRITE not implemented")
+
+        if data == "LIST":
+            print("Server WRITE not implemented")
+
+        if data == "CREATE":
+            print("Server WRITE not implemented")
+
+        if data == "CHANGE_PERMISSION":
+            print("Server WRITE not implemented")
 
         # Split data into an array
         dataArray = data.split()
         print("TEST: Client sent %s" % dataArray)
 
         # Send back ACK
-        self.request.sendall("ACK".encode())
+
         return
+
+    # Get the size of the next message in BYTES
+    def getMessageSize(self):
+        self.request.sendall("SEND NEXT MESSAGE LENGTH".encode())
+        data = self.request.recv(1024).decode()
+        isINT = isinstance(data, int)
+
+        if not isINT:
+            print("Error, Client %s, did not supply INT in getMessageSize" % self.client_address[0])
+            return -1
+
+        else:
+            return data
 
 
 ##############################################
@@ -160,6 +224,8 @@ class fileObject:
     def __int__(self, name, type, owner):
         self.TYPE = type
         self.OWNER = owner
+
+        # In order: user, read, write, delete, rename
         self.ACCESS_LIST = []
         self.NAME = name
 
@@ -170,11 +236,7 @@ class fileObject:
         self.subDirectories = []
         self.subFiles = []
 
-    # Sets file/directory path
-    def setPath(self, path):
-        self.PATH = path
-
-    # Appends a subDirectory
+    # Appends a new directory in subDirectory
     def makeNewDirectory(self, path, name, user):
 
         print("Not Tested")
@@ -208,7 +270,7 @@ class fileObject:
         print("Error, rest of PATH: '%s' not found" % path)
         return False
 
-
+    # Appends a new file in subFiles
     def makeNewFile(self, path, name, user):
 
         print("Not Tested")
@@ -242,14 +304,6 @@ class fileObject:
         path.join("/")
         print("Error, rest of PATH: '%s' not found" % path)
         return False
-
-    # Return True or False if name matches
-    def checkName(self, name):
-        if self.NAME == name:
-            return True
-        else:
-            return False
-
 
     # Passed a name, return a list of file permissions
     # Check permissions of a valid file
@@ -300,8 +354,38 @@ class fileObject:
             self.ACCESS_LIST[index + 3] = delete
             self.ACCESS_LIST[index + 4] = rename
 
+    # returns a list of permissions
+    # List of 1 element means user doesnt exist, OR user is OWNER
+    # ACCESS_LIST has in order: read, write, delete, rename
+    def checkPermisions(self, user):
+
+        permissionList = [False]
+        print("Not Tested")
+
+        # If user is OWNER
+        if self.OWNER == user:
+            permissionList[0] = True
+            return permissionList
+
+        # Loop, check all users
+        for i in range(len(self.ACCESS_LIST)):
+
+            # Found user
+            if self.ACCESS_LIST[i] == user:
+                # Append permissions
+                permissionList.append(self.ACCESS_LIST[i + 1])
+                permissionList.append(self.ACCESS_LIST[i + 2])
+                permissionList.append(self.ACCESS_LIST[i + 3])
+                permissionList.append(self.ACCESS_LIST[i + 4])
+
+                # return list
+                return permissionList
+
+        # Default, return False list, 1 element
+        return permissionList
+
     # Checks read access
-    def checkRead(self, name):
+    def readFile(self, path, name, user):
 
         print("Not Implemented/Checked")
 
@@ -325,7 +409,7 @@ class fileObject:
         return False
 
     # Checks write access
-    def checkWrite(self, name):
+    def writeFile(self, name):
 
         print("Not Implemented/Checked")
 
@@ -349,7 +433,7 @@ class fileObject:
         return False
 
     # Checks delete access
-    def checkDelete(self, name):
+    def delete(self, name):
 
         print("Not Implemented/Checked")
 
@@ -395,8 +479,6 @@ class fileObject:
 
         # Default return False
         return False
-
-
 
     # Parameter is a LIST
     # CONTAINS THE FULL PATH TO CHECK
@@ -489,7 +571,6 @@ BaseDirectory.PATH = defaultPath
 # OS PATH w/ BaseServerDirectory NAME
 BaseServerPath = os.path.join(defaultPath, BaseDirectory.NAME)
 
-
 # Try to delete EXISTING DIRECTORY
 try:
     os.remove(BaseServerPath)
@@ -497,8 +578,6 @@ try:
 
 except:
     print("Error: %s : %s" % (BaseServerPath, OSError.strerror))
-
-
 
 # Main
 if __name__ == '__main__':
