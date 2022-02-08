@@ -40,7 +40,12 @@ import threading
 ###############################################
 # Get operating system
 OS = platform.system()
-ServerDirectory = os.getcwd()
+defaultPath = os.getcwd()
+
+# Mutexes and Semaphores
+modifyMutex = threading.Lock()
+numberOfMaxReaders = 20
+readSemaphore = threading.Semaphore(numberOfMaxReaders)
 
 
 ###############################################
@@ -153,7 +158,6 @@ class fileServerHandler(socketserver.BaseRequestHandler):
 class fileObject:
 
     def __int__(self, name, type, owner):
-        self.MUTEX = threading.Lock()
         self.TYPE = type
         self.OWNER = owner
         self.ACCESS_LIST = []
@@ -166,28 +170,78 @@ class fileObject:
         self.subDirectories = []
         self.subFiles = []
 
-    # Locks own mutex
-    def lock(self):
-        print("Not Implemented")
-        self.MUTEX.acquire()
-        print("Mutex is now locked for %s %s" % (self.TYPE, self.NAME))
-        return
-
-    # Unlocks own mutex
-    def unlock(self):
-        print("Not Implemented")
-        self.MUTEX.release()
-        print("Mutex is now unlocked for %s %s" % (self.TYPE, self.NAME))
-        return
-
-    # Puts a new Name
-    def rename(self, name):
-        print("Not Implemented")
+    # Sets file/directory path
+    def setPath(self, path):
+        self.PATH = path
 
     # Appends a subDirectory
-    def makeNewDirectory(self, fileObject):
-        self.subDirectories.append(fileObject)
-        print("Not Implement")
+    def makeNewDirectory(self, path, name, user):
+
+        print("Not Tested")
+
+        # Get to Directory to ADD NEW
+        if (len(path) == 0):
+
+            # Error for NAME already exists
+            for i in self.subDirectories:
+
+                if i.NAME == name:
+                    print("Error, NAME already exists")
+                    return False
+
+            # Make new fileObject in subDirectory
+            newDirectory = fileObject()
+            newDirectory.TYPE = "D"
+            newDirectory.NAME = name
+            newDirectory.OWNER = user
+            self.subDirectories.append(fileObject)
+            print("Test Code, directory made")
+            return True
+
+        # Else "recursive call" to FIND
+        for i in self.subDirectories:
+
+            if i.NAME == path[0]:
+                return i.makeNewDirectory(self, path[1:], name, user)
+
+        path.join("/")
+        print("Error, rest of PATH: '%s' not found" % path)
+        return False
+
+
+    def makeNewFile(self, path, name, user):
+
+        print("Not Tested")
+
+        # Get to Directory to ADD NEW
+        if (len(path) == 0):
+
+            # Error for NAME already exists
+            for i in self.subFiles:
+
+                if i.NAME == name:
+                    print("Error, NAME already exists")
+                    return False
+
+            # Make new fileObject in subFiles
+            newFile = fileObject()
+            newFile.TYPE = "F"
+            newFile.NAME = name
+            newFile.OWNER = user
+            self.subFiles.append(fileObject)
+            print("Test code, file made")
+
+            return True
+
+        # Else "recursive call" to FIND
+        for i in self.subDirectories:
+
+            if i.NAME == path[0]:
+                return i.makeNewFile(self, path[1:], name, user)
+
+        path.join("/")
+        print("Error, rest of PATH: '%s' not found" % path)
+        return False
 
     # Return True or False if name matches
     def checkName(self, name):
@@ -196,9 +250,6 @@ class fileObject:
         else:
             return False
 
-    # Sets file/directory path
-    def setPath(self, path):
-        self.PATH = path
 
     # Passed a name, return a list of file permissions
     # Check permissions of a valid file
@@ -345,26 +396,7 @@ class fileObject:
         # Default return False
         return False
 
-    # Go through all sub-directories and lock
-    def recursiveLock_ALL_DIRECTORIES(self):
 
-        # lock self
-        self.lock()
-
-        for x in self.subDirectories:
-            self.subDirectories[x].recursiveLock_ALL_DIRECTORIES()
-
-        return
-
-    # Go through all sub-directories and unlock
-    def recursiveUnLock_ALL_DIRECTORIES(self):
-
-        # unlock self
-
-        for x in self.subDirectories:
-            self.subDirectories[x].recursiveUnLock_ALL_DIRECTORIES()
-
-        return
 
     # Parameter is a LIST
     # CONTAINS THE FULL PATH TO CHECK
@@ -415,7 +447,6 @@ class fileObject:
         return
 
 
-
 ################################
 # Non class functions
 ################################
@@ -427,6 +458,46 @@ def openTextEditor():
 
     elif OS == "Linux":
         return shutil.which("nano")
+
+
+def deleteFile():
+    print("not yet implement")
+
+
+def createBaseDirectory(name, path):
+    # Check if PATH exists
+    pathExists = BaseDirectory.checkPath(path)
+    if not pathExists:
+        print("Error, PATH does not exists")
+        return
+
+    # Check if NAME already exists
+    pathWithName = path.append(name)
+    pathExists = BaseDirectory.checkPath(pathWithName)
+    if pathExists:
+        print("Error, NAME already exists")
+        return
+
+
+# BaseDirectory Object
+BaseDirectory = fileObject()
+BaseDirectory.NAME = "SEDFS_root"
+BaseDirectory.TYPE = "D"
+BaseDirectory.OWNER = "root"
+BaseDirectory.PATH = defaultPath
+
+# OS PATH w/ BaseServerDirectory NAME
+BaseServerPath = os.path.join(defaultPath, BaseDirectory.NAME)
+
+
+# Try to delete EXISTING DIRECTORY
+try:
+    os.remove(BaseServerPath)
+    os.makedirs(BaseServerPath)
+
+except:
+    print("Error: %s : %s" % (BaseServerPath, OSError.strerror))
+
 
 
 # Main
