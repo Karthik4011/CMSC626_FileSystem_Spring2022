@@ -41,11 +41,6 @@ def help():
           "\t'h' == Help\n")
 
 
-"""
-arg1: ClientInfo Class
-arg2: Socket
-"""
-
 # Open Text Editor
 # Gets notepad on Windows, Nano on Linux
 def openTextEditor():
