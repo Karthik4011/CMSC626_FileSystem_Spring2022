@@ -106,8 +106,8 @@ if __name__ == '__main__':
             serverResponse = information.clientSocket.recv(1024).decode()
             if serverResponse == "LOGIN_SUCCESS":
                 connected = True
-
-        print("Unexpected Error: Server Response: %s" % serverResponse)
+            else:
+                print("Unexpected Error: Server Response: %s" % serverResponse)
 
     # Client Menu script
     if connected:
@@ -116,7 +116,7 @@ if __name__ == '__main__':
             clientRequest = input().lower()
 
             # Clear Screen
-            os.system('cls' if os.name == 'nt' else 'clear')
+            # os.system('cls' if os.name == 'nt' else 'clear')
 
             if clientRequest == "h" or clientRequest == "help":
                 help()
@@ -163,8 +163,9 @@ if __name__ == '__main__':
                 print("Object Name?\n>> ", end='')
                 name = input().upper()
 
-                information.clientSocket.sendall("WRITE", fileOrDirc, name)
-
+                clientRequest = "WRITE" + " " + fileOrDirc + " " + total_path + " " + name
+                clientRequest = clientRequest.encode()
+                information.clientSocket.sendall(clientRequest)
                 serverResponse = information.clientSocket.recv(1024).decode()
 
                 print(serverResponse)

@@ -143,57 +143,60 @@ class fileServerHandler(socketserver.BaseRequestHandler):
         user = self.request.recv(1024).decode()
 
         # Log About received data
-        self.serverHandlerLog.info("[+] New Connection Made, IP: %s, Port: %s Message: %s" %
+        self.serverHandlerLog.info("[+] New Connection Made, IP: %s, Port: %s USER: %s" %
                                    (self.client_address[0], self.client_address[1], user))
 
-        # Look for authorized user
-        foundUser = False
-        passwordIndex = None
-        j = 0
-        for i in authorizedUsers:
 
-            j += 1
-            if i == user:
+        # Loop to look for USER
+        i = 0
+        while i < len(authorizedUsers):
+
+            if authorizedUsers[i] == user:
                 self.request.sendall("PASSWORD".encode())
                 foundUser = True
-                passwordIndex = j
                 break
 
-            i += 1
-            j += 1
+            i += 2
+
+        # if i > len(authorizedUsers) --> Then user does not exist
+        if i > len(authorizedUsers):
+            self.request.sendall("LOGIN_FAILED".encode())
+            self.serverHandlerLog.info("[+] LOGIN FAILED (Invalid USER), IP: %s, Port: %s USER: %s" %
+                                       (self.client_address[0], self.client_address[1], user))
+            return
 
         # PASSWORD response from client
         password = self.request.recv(1024).decode()
 
-        # if j > len(authorizedUsers) --> Then user does not exist
-        if j > len(authorizedUsers):
-            self.request.sendall("LOGIN_FAILED".encode())
-            return
-
         # Else, "j" is within bounds of authorizedUsers
-        elif password == authorizedUsers[j]:
+        if password == authorizedUsers[i+1]:
             self.request.sendall("LOGIN_SUCCESS".encode())
+            self.serverHandlerLog.info("[+] LOGIN SUCCESS, IP: %s, Port: %s USER: %s" %
+                                       (self.client_address[0], self.client_address[1], user))
 
         else:
             self.request.sendall("LOGIN_FAILED".encode())
+            self.serverHandlerLog.info("[+] LOGIN FAILED (Invalid PASSWORD), IP: %s, Port: %s USER: %s" %
+                                       (self.client_address[0], self.client_address[1], user))
             return
 
         # Get userRequest
         request = self.request.recv(1024).decode()
+        request = request.split()
 
         if request[0] == "WRITE":
             print("Server WRITE not implemented / TESTED")
-            path = self.askPath()
-            type = self.receiveALL()
-            name = self.receiveALL()
+            data = self.receiveALL()
+            self.serverHandlerLog.info("[+] '%s' WRITE REQUEST, IP: %s, Port: %s Message: %s" %
+                                       (user, self.client_address[0], self.client_address[1], data))
 
             # Try WRITE new directory
-            if type == "D":
+            if request[1] == "D":
 
-                success = BaseDirectory.makeNewDirectory(path, name, user)
+                success = BaseDirectory.makeNewDirectory(request[2], request[3], user)
 
                 if success:
-                    os.mkdir(path + name)
+                    os.mkdir(request[2] + request[3])
                     self.request.sendall("SUCCESS, DIRECTORY WAS CREATED")
 
                 else:
@@ -202,12 +205,12 @@ class fileServerHandler(socketserver.BaseRequestHandler):
                 return
 
             # Try WRITE new file
-            elif type == "F":
+            elif request[1] == "F":
 
-                success = BaseDirectory.makeNewFile(path, name, user)
+                success = BaseDirectory.makeNewFile(request[2], request[3], user)
 
                 if success:
-                    file = open(path + name, "x")
+                    file = open(request[2] + request[3], "x")
                     file.close()
 
                 else:
@@ -634,12 +637,39 @@ BaseDirectory.PATH = defaultPath
 BaseServerPath = os.path.join(defaultPath, BaseDirectory.NAME)
 
 # Try to delete EXISTING DIRECTORY
-try:
-    os.remove(BaseServerPath)
-    os.makedirs(BaseServerPath)
+removed = True
+isdir = False
 
-except:
-    print("Error: %s : %s" % (BaseServerPath, OSError.strerror))
+print("Before error")
+isdir = os.path.isdir(BaseServerPath)
+
+if isdir:
+
+    # Loop to ask if REMOVE existing SEDFS
+    print("Greeting Server Admin\nSEDFS Server has file at\n%s" % BaseServerPath)
+    while 1:
+        removed = input("Do you wish to keep these files?\n >>").lower()
+
+        # Remove if requested
+        if removed == "yes" or removed == "y":
+            remove = True
+            os.remove(BaseServerPath)
+            print("SEDFS Directory Removed")
+            break
+
+        if removed == "no" or removed == "n":
+            removed = False
+            break
+
+# Remove if requested
+if removed:
+    try:
+        os.makedirs(BaseServerPath)
+        print("New SEDFS Directory Made")
+
+    except:
+        print("Error: %s : %s" % (BaseServerPath, OSError.strerror))
+
 
 # Main
 if __name__ == '__main__':
