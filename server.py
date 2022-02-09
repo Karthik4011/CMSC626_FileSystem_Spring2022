@@ -35,6 +35,9 @@ from datetime import datetime
 # For threading processes
 import threading
 
+# Used for Sleeping
+import time
+
 ###############################################
 # Global Variables
 ###############################################
@@ -137,11 +140,11 @@ class fileServerHandler(socketserver.BaseRequestHandler):
         # print("Server handler looking for NEW connection")
 
         # Receive USER info
-        data = self.request.recv(1024).decode()
+        user = self.request.recv(1024).decode()
 
         # Log About received data
         self.serverHandlerLog.info("[+] New Connection Made, IP: %s, Port: %s Message: %s" %
-                                   (self.client_address[0], self.client_address[1], data))
+                                   (self.client_address[0], self.client_address[1], user))
 
         # Look for authorized user
         foundUser = False
@@ -150,7 +153,7 @@ class fileServerHandler(socketserver.BaseRequestHandler):
         for i in authorizedUsers:
 
             j += 1
-            if i == data:
+            if i == user:
                 self.request.sendall("PASSWORD".encode())
                 foundUser = True
                 passwordIndex = j
@@ -160,7 +163,7 @@ class fileServerHandler(socketserver.BaseRequestHandler):
             j += 1
 
         # PASSWORD response from client
-        data = self.request.recv(1024).decode()
+        password = self.request.recv(1024).decode()
 
         # if j > len(authorizedUsers) --> Then user does not exist
         if j > len(authorizedUsers):
@@ -168,7 +171,7 @@ class fileServerHandler(socketserver.BaseRequestHandler):
             return
 
         # Else, "j" is within bounds of authorizedUsers
-        if data == authorizedUsers[j]:
+        elif password == authorizedUsers[j]:
             self.request.sendall("LOGIN_SUCCESS".encode())
 
         else:
@@ -176,64 +179,100 @@ class fileServerHandler(socketserver.BaseRequestHandler):
             return
 
         # Get userRequest
-        data = self.request.recv(1024).decode()
+        request = self.request.recv(1024).decode()
 
-        if data == "WRITE":
-            print("Server WRITE not implemented")
+        if request[0] == "WRITE":
+            print("Server WRITE not implemented / TESTED")
+            path = self.askPath()
+            type = self.receiveALL()
+            name = self.receiveALL()
 
-        if data == "READ":
-            print("Server WRITE not implemented")
+            # Try WRITE new directory
+            if type == "D":
 
-        if data == "LIST":
-            print("Server WRITE not implemented")
+                success = BaseDirectory.makeNewDirectory(path, name, user)
 
-        if data == "CREATE":
-            print("Server WRITE not implemented")
+                if success:
+                    os.mkdir(path + name)
+                    self.request.sendall("SUCCESS", "DIRECTORY WAS CREATED")
 
-        if data == "CHANGE_PERMISSION":
-            print("Server WRITE not implemented")
+                else:
+                    self.request.sendall("ERROR", "INCORRECT NAME OR PATH")
 
-        # Split data into an array
-        dataArray = data.split()
-        print("TEST: Client sent %s" % dataArray)
+                return
 
-        # Send back ACK
+            # Try WRITE new file
+            elif type == "F":
+
+                success = BaseDirectory.makeNewFile(path, name, user)
+
+                if success:
+                    file = open(path + name, "x")
+                    file.close()
+
+                else:
+                    self.request.sendall("ERROR", "INCORRECT NAME OR PATH")
+
+                return
+
+            # else type is invalid
+            else:
+                self.request.sendall("ERROR", "INVALID TYPE")
+
+        elif request[0] == "READ":
+            print("Server WRITE not implemented / TESTED")
+
+        elif request[0] == "LIST":
+            print("Server WRITE not implemented / TESTED")
+
+        elif request[0] == "CREATE":
+            print("Server WRITE not implemented / TESTED")
+
+        elif request[0] == "CHANGE_PERMISSION":
+            print("Server WRITE not implemented / TESTED")
+
+        else:
+            print("Error: <%s> REQUEST <%s> NOT FOUND" % (user, request))
+            self.request.sendall("ERROR", "NOT FOUND")
 
         return
 
     # Get the size of the next message in BYTES
-    def getMessageSize(self):
-        self.request.sendall("SEND NEXT MESSAGE LENGTH".encode())
-        data = self.request.recv(1024).decode()
+    def receiveALL(self):
 
-        isINT = isinstance(data, int)
-        if not isINT:
-            return -1
+        totalData = ""
 
-        else:
-            return data
+        while True:
+
+            # Try to recv
+            try:
+                data = self.request.recv(1024).decode()
+
+                # Join data
+                if data:
+                    totalData.join(data)
+
+                else:
+
+                    # sleep for sometime to indicate a gap
+                    time.sleep(0.1)
+
+            # Break if no more data
+            except:
+                pass
+
+            return totalData
 
     # Returns a LIST, which is a PATH
     def askPath(self):
-        self.request.sendall("PATH")
-        messageLength = self.getMessageSize()
 
-        if messageLength < 0:
-            print("Error, Client %s, did not supply SIZE in askPath()" % self.client_address[0])
+        # Request Path, and get from client
+        self.request.sendall("PATH")
+        path = self.receiveALL()
 
         clientPath = ""
-
-        # Use Default Path
-        if messageLength == 0:
-            clientPath.join(BaseServerPath)
-
-        # RECV path from client
-        while(messageLength > 0):
-            data = self.request.recv(1024).decode()
-            clientPath.join(data)
-            messageLength -= 1024
-
-        clientPath = clientPath.split('\\')
+        clientPath.join(BaseServerPath)
+        clientPath.join(path)
 
         return clientPath
 
