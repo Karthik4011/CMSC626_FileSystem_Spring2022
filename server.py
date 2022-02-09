@@ -193,16 +193,26 @@ class fileServerHandler(socketserver.BaseRequestHandler):
             # Try WRITE new directory
             if request[1] == "D":
 
-                success = BaseDirectory.makeNewDirectory(request[2], request[3], user)
+                try:
+                    newDircAt = defaultPath + "//" + request[2] + request[3]
+                    os.mkdir(newDircAt)
+                    print("Server Made new directory")
+                    print("%s" % newDircAt)
+                    self.request.sendall("SUCCESS, DIRECTORY CREATED".encode())
 
-                if success:
-                    os.mkdir(request[2] + request[3])
-                    self.request.sendall("SUCCESS, DIRECTORY WAS CREATED")
+                except:
+                    print("server could not make directory %s", request[2])
+                    self.request.sendall("FAILED, DIRECTORY NOT CREATED".encode())
+                #success = BaseDirectory.makeNewDirectory(request[2], "", user)
 
-                else:
-                    self.request.sendall("ERROR, INCORRECT NAME OR PATH")
+                #if success:
+                    #os.mkdir(request[2] + request[3])
+                    #self.request.sendall("SUCCESS, DIRECTORY WAS CREATED")
 
-                return
+                #else:
+                    #self.request.sendall("ERROR, INCORRECT NAME OR PATH")
+
+                #return
 
             # Try WRITE new file
             elif request[1] == "F":
@@ -210,7 +220,7 @@ class fileServerHandler(socketserver.BaseRequestHandler):
                 success = BaseDirectory.makeNewFile(request[2], request[3], user)
 
                 if success:
-                    file = open(request[2] + request[3], "x")
+                    file = open(request[2] + "", "x")
                     file.close()
 
                 else:
@@ -598,13 +608,7 @@ class fileObject:
 # Non class functions
 ################################
 
-# Gets notepad on Windows, Nano on Linux
-def openTextEditor():
-    if OS == "Windows":
-        return shutil.which("notepad")
 
-    elif OS == "Linux":
-        return shutil.which("nano")
 
 
 def deleteFile():

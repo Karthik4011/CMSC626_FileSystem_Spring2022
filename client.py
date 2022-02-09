@@ -46,7 +46,17 @@ arg1: ClientInfo Class
 arg2: Socket
 """
 
+# Open Text Editor
+# Gets notepad on Windows, Nano on Linux
+def openTextEditor():
+    if OS == "Windows":
+        return shutil.which("notepad")
 
+    elif OS == "Linux":
+        return shutil.which("nano")
+
+
+# arg == IP address
 def connectServer(client):
     # Get Main Server IP and add info to Client Class
     print('Input SEDFS Server IPv4 Address\n>> ', end='')
@@ -73,7 +83,7 @@ if __name__ == '__main__':
 
     information = ClientInfo  # Hold info about Client
     clientRequest = ""  # Client -> Server Request
-    currentSEDFSpath = "SEDFS_root\\"  # Current path on SEDFS
+    currentSEDFSpath = "SEDFS_root/"  # Current path on SEDFS
     connected = False
 
     # Create IPv4, TCP socket
@@ -152,7 +162,7 @@ if __name__ == '__main__':
                         ans = "no"
 
                 if ans == "no" or ans == "n":
-                    total_path = currentSEDFSpath + ans
+                    total_path = currentSEDFSpath
 
                 else:
                     total_path = new_path
