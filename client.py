@@ -73,9 +73,8 @@ if __name__ == '__main__':
 
     information = ClientInfo  # Hold info about Client
     clientRequest = ""  # Client -> Server Request
-    currentREAD = ""  # Current READ file
-    currentREADpath = ""  # Current READ path
-    currentSEDFSpath = ""  # Current path on SEDFS
+    currentSEDFSpath = "SEDFS_root"  # Current path on SEDFS
+    connected = False
 
     # Create IPv4, TCP socket
     # clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -95,72 +94,99 @@ if __name__ == '__main__':
         elif clientRequest == "y" or clientRequest == "yes":
             intialConnection = connectServer(information)
 
+    # Enter Username and Password
+    if clientRequest != 'q':
+        username = input("Please enter username:\n >>")
+        information.clientSocket.send(username.encode())
+        serverResponse = information.clientSocket.recv(1024).decode()
+
+        if serverResponse == "PASSWORD":
+            username = input("Please enter password:\n >>")
+            information.clientSocket.send(username.encode())
+            serverResponse = information.clientSocket.recv(1024).decode()
+            if serverResponse == "LOGIN_SUCCESS":
+                connected = True
+
+        print("Unexpected Error: Server Response: %s" % serverResponse)
 
     # Client Menu script
-    while clientRequest != 'q':
-        print(">> Current Read: %s\n>> Current SEDFS Path: %s\n>> " % (currentREAD, currentSEDFSpath), end='')
-        clientRequest = input().lower()
+    if connected:
+        while connected:
+            print("n>> Current SEDFS Path: %s\n>> " % currentSEDFSpath, end='')
+            clientRequest = input().lower()
 
-        # Clear Screen
-        os.system('cls' if os.name == 'nt' else 'clear')
+            # Clear Screen
+            os.system('cls' if os.name == 'nt' else 'clear')
 
-        if clientRequest == "h" or clientRequest == "help":
-            help()
+            if clientRequest == "h" or clientRequest == "help":
+                help()
 
-        elif clientRequest == "q":
-            # implement code to break server
-            print("Quit Not implemented")
-            # Close TCP connection
+            elif clientRequest == "q":
+                print("Quit Not implemented")
+                information.clientSocket.close()
+                connected = False
 
-        elif clientRequest == "r":
-            # implement code to READ new file
-            print("Quit Not implemented")
-            # Request to READ file in "current SEDFS path"
-            # Display result from server response
+            elif clientRequest == "r":
+                # implement code to READ new file
+                print("Quit Not implemented")
+                # Request to READ file in "current SEDFS path"
+                # Display result from server response
 
-        elif clientRequest == "w":
-            # implement code to WRITE to READ file
-            print("Write Not implemented")
-            # Look at 'current local path' for READ file
-            # Copy contents of READ file
-            # Request server to WRITE
-            # Send WRITE request
-            # Send currentReadPath
-            # Server responds with "GRANTED" or "NOT_VALID"
+            elif clientRequest == "w":
+                # implement code to WRITE file
+                print("Write Not implemented")
+                # Look at 'current local path' for READ file
+                while True:
+                    print("Would you like to enter a new path?\n>> ", end='')
+                    ans = input().lower()
 
-        elif clientRequest == "c":
-            # implement code to CREATE file/directory
-            print("Create New FILE/DIRECTORY Not implemented")
+                    if ans == "" or ans == "no" or ans == "n" or ans == "yes" or ans == "y":
+                        break
 
-        elif clientRequest == "n":
-            # implement code to NAVIGATE to new directory
-            print("Navigate to Directory Not implemented")
-            # Ask user for path request
+                if ans == "yes" or ans == "y":
+                    ans = input("Enter New Path\n>> ")
 
-        elif clientRequest == "b":
-            # implement code to WRITE to READ file
-            print("Move Back Not implemented")
-            # Request server to go back one directory
-            # Display server response (SUCCESS or FAILURE)
-            # Display new path
 
-        elif clientRequest == "l":
-            # implement code to WRITE to READ file
-            print("List Contents Not implemented")
-            # Request server to list current directory contents
-            # Diplay server response
 
-        elif clientRequest == "d":
-            # implement code to DELETE file/directory
-            print("Delete Not implemented")
-            # Ask user for file to delete
-            # Send delete request to server
-            # !!! Server Should Only delete directory if empty !!
-            # Tell user status
+                # Copy contents of READ file
+                # Request server to WRITE
+                # Send WRITE request
+                # Send currentReadPath
+                # Server responds with "GRANTED" or "NOT_VALID"
 
-        elif clientRequest == "s":
-            # implement code to display server information
-            print("Server Information Not implemented")
-            information.clientSocket.send("SYN".encode())
-            serverResponse = information.clientSocket.recv(1024).decode()
-            print("Server Response: %s", serverResponse)
+            elif clientRequest == "c":
+                # implement code to CREATE file/directory
+                print("Create New FILE/DIRECTORY Not implemented")
+
+            elif clientRequest == "n":
+                # implement code to NAVIGATE to new directory
+                print("Navigate to Directory Not implemented")
+                # Ask user for path request
+
+            elif clientRequest == "b":
+                # implement code to WRITE to READ file
+                print("Move Back Not implemented")
+                # Request server to go back one directory
+                # Display server response (SUCCESS or FAILURE)
+                # Display new path
+
+            elif clientRequest == "l":
+                # implement code to WRITE to READ file
+                print("List Contents Not implemented")
+                # Request server to list current directory contents
+                # Diplay server response
+
+            elif clientRequest == "d":
+                # implement code to DELETE file/directory
+                print("Delete Not implemented")
+                # Ask user for file to delete
+                # Send delete request to server
+                # !!! Server Should Only delete directory if empty !!
+                # Tell user status
+
+            elif clientRequest == "s":
+                # implement code to display server information
+                print("Server Information Not implemented")
+                information.clientSocket.send("SYN".encode())
+                serverResponse = information.clientSocket.recv(1024).decode()
+                print("Server Response: %s", serverResponse)
