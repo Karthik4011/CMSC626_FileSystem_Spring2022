@@ -194,10 +194,10 @@ class fileServerHandler(socketserver.BaseRequestHandler):
 
                 if success:
                     os.mkdir(path + name)
-                    self.request.sendall("SUCCESS", "DIRECTORY WAS CREATED")
+                    self.request.sendall("SUCCESS, DIRECTORY WAS CREATED")
 
                 else:
-                    self.request.sendall("ERROR", "INCORRECT NAME OR PATH")
+                    self.request.sendall("ERROR, INCORRECT NAME OR PATH")
 
                 return
 
@@ -211,13 +211,13 @@ class fileServerHandler(socketserver.BaseRequestHandler):
                     file.close()
 
                 else:
-                    self.request.sendall("ERROR", "INCORRECT NAME OR PATH")
+                    self.request.sendall("ERROR, INCORRECT NAME OR PATH")
 
                 return
 
             # else type is invalid
             else:
-                self.request.sendall("ERROR", "INVALID TYPE")
+                self.request.sendall("ERROR, INVALID TYPE")
 
         elif request[0] == "READ":
             print("Server WRITE not implemented / TESTED")
@@ -233,7 +233,7 @@ class fileServerHandler(socketserver.BaseRequestHandler):
 
         else:
             print("Error: <%s> REQUEST <%s> NOT FOUND" % (user, request))
-            self.request.sendall("ERROR", "NOT FOUND")
+            self.request.sendall("ERROR, NOT FOUND")
 
         return
 

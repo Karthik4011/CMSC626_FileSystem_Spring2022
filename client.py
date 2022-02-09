@@ -73,7 +73,7 @@ if __name__ == '__main__':
 
     information = ClientInfo  # Hold info about Client
     clientRequest = ""  # Client -> Server Request
-    currentSEDFSpath = "SEDFS_root"  # Current path on SEDFS
+    currentSEDFSpath = "SEDFS_root\\"  # Current path on SEDFS
     connected = False
 
     # Create IPv4, TCP socket
@@ -133,6 +133,9 @@ if __name__ == '__main__':
                 # Display result from server response
 
             elif clientRequest == "w":
+
+                new_path = ""
+
                 # implement code to WRITE file
                 print("Write Not implemented")
                 # Look at 'current local path' for READ file
@@ -144,10 +147,27 @@ if __name__ == '__main__':
                         break
 
                 if ans == "yes" or ans == "y":
-                    ans = input("Enter New Path\n>> ")
+                    new_path = input("Enter New Path\n>> ")
+                    if new_path == "":
+                        ans = "no"
 
+                if ans == "no" or ans == "n":
+                    total_path = currentSEDFSpath + ans
 
+                else:
+                    total_path = new_path
 
+                print("Directory <D> or File <F>?\n>> ", end='')
+                fileOrDirc = input().upper()
+
+                print("Object Name?\n>> ", end='')
+                name = input().upper()
+
+                information.clientSocket.sendall("WRITE", fileOrDirc, name)
+
+                serverResponse = information.clientSocket.recv(1024).decode()
+
+                print(serverResponse)
                 # Copy contents of READ file
                 # Request server to WRITE
                 # Send WRITE request
