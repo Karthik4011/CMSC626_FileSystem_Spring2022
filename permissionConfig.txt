@@ -1,2 +1,3 @@
-alice.txt,bob,root
-bob.txt,root
+alice.txt,SEDFS_root/bobs home/alice home/alice.txt,f,alice,bob,T,T,F,T,root,T,T,F,F
+bob.txt,SEDFS_root/bobs home/bob.txt,f,bob,root,T,T,T,T
+bobs home,SEDFS_root/bobs home,d,root,T,T,T,T

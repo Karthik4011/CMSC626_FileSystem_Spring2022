@@ -530,7 +530,7 @@ def loadPermissionConfig():
     global BaseDirectory
 
     try:
-        file = open("fileConfig.txt", mode='r')
+        file = open("permissionConfig.txt", mode='r')
     except:
         serverLog.info("[*] permissionConfig.txt, file not found")
         return
@@ -538,22 +538,26 @@ def loadPermissionConfig():
     lines = file.readlines()
     file.close()
 
+    print("Before Lines")
     for line in lines:
 
         # remove whitespaces, delimiters, append to authorizedUsers
         line = line.strip()
         permissionList = line.split(",")
 
-        if len(line) < 3:
+        if len(line) < 8:
             print("Error: Loaded file is missing requirements")
             continue
 
-        owner = permissionList[2]
-        objectType = permissionList[1]
-        fullPath = permissionList[0]
+        print("Length of split", len(permissionList))
+        owner = permissionList[3]
+        objectType = permissionList[2]
+        path = permissionList[1]
+        name = permissionList[0]
 
-        permissionList = permissionList[2:]
+        permissionList = permissionList[4:]
 
+        print("Seaching auth users")
         # Search existing users
         for i in authorizedUsers:
 
@@ -563,12 +567,37 @@ def loadPermissionConfig():
                 # Search OWNER files
                 if objectType == "f":
                     for files in i.ownerFiles:
-                        if files.path == defaultSystemPath + fullPath:
+
+                        # file match
+                        if files.path == path:
+
+                            print("Test, file match")
+
+                            temporaryFiles = []
+                            whogetsFile = []
+                            z = 0
+                            while z < len(permissionList):
+
+                                temporaryFiles.append(File(name, owner, path,
+                                                           permissionList[z+1],
+                                                           permissionList[z+2],
+                                                           permissionList[z+3],
+                                                           permissionList[z+4]))
+
+                                whogetsFile.append(permissionList[z])
+                                z += 5
+
+                            for allUsers in authorizedUsers:
+                                for toAppend in whogetsFile:
+                                    if allUsers.name == toAppend:
+                                        allUsers.accessFiles.append(temporaryFiles[0])
+                                        temporaryFiles.pop(0)
+                                        break
 
                             print("ugh")
 
                         else:
-                            print("Filepath does not exist: " + defaultSystemPath + fullPath)
+                            print("Filepath does not exist: " + defaultSystemPath + path)
 
                 elif objectType == "d":
                     print("Ugh")
@@ -587,8 +616,10 @@ if __name__ == '__main__':
         loadUserConfig()
         loadDirectoryConfig()
         loadFileConfig()
-
+        
+        loadPermissionConfig()
         printUserPermissions()
+
 
         """"
         # Set Server IP
