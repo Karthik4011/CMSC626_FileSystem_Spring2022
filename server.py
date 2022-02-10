@@ -39,6 +39,9 @@ import threading
 # Used for Sleeping
 import time
 
+#Used for Deleting files
+import stat
+
 ###########################################################################
 # Global Variables
 ###########################################################################
@@ -281,6 +284,7 @@ class User:
         self.ownerDirectory = []
 
 
+##############################################################################
 class Directory:
 
     def __init__(self, name, owner, path, read, write, delete, rename):
@@ -296,6 +300,7 @@ class Directory:
         self.rename = rename
 
 
+##############################################################################
 class File:
 
     def __init__(self, name, owner, path, read, write, delete, rename):
@@ -311,11 +316,18 @@ class File:
         self.rename = rename
 
 
-################################
+##############################################################################
 # Non class functions
-################################
+##############################################################################
+
+# Deletes ReadOnly Files
+def remove_on_error(function, path, exec_info):
+    os.chmod(path, stat.S_IWRITE)
+    os.unlink(path)
+    return
 
 
+# Creates SEDFS BaseDirectory
 def createBaseDirectory():
     global BaseDirectory
 
@@ -327,21 +339,22 @@ def createBaseDirectory():
 
     if pathExists:
 
+        #if len(SEDFSpath) > 0 and SEDFSpath[-1] == "/" or SEDFSpath[-1] == "/":
+            #SEDFSpath = SEDFSpath[:-1]
 
-        if len(SEDFSpath) > 0 and SEDFSpath[-1] == "/" or SEDFSpath[-1] == "/":
-            SEDFSpath = SEDFSpath[:-1]
-
-
-        os.chmod("SEDFS_root", 777)
         serverLog.info("[*] SEDFS Directory found at: %s" % SEDFSpath)
-        os.rmdir(SEDFSpath)
+
+        shutil.rmtree(SEDFSpath, onerror=remove_on_error)
         serverLog.info("[-] SEDFS Directory removed at: %s" % SEDFSpath)
 
-
+        os.makedirs(SEDFSpath)
+        os.chmod(SEDFSpath, stat.S_IWRITE)
         serverLog.info("[+] SEDFS Directory created at: %s" % SEDFSpath)
 
     else:
-        os.makedirs(SEDFSpath)
+        path = os.path.join(defaultSystemPath, BaseDirectory)
+        os.mkdir(path)
+        os.chmod(path, stat.S_IWRITE)
         serverLog.info("[+] SEDFS Directory created at: %s" % SEDFSpath)
 
     return
@@ -349,7 +362,14 @@ def createBaseDirectory():
 
 # Load given User Configs
 def loadUserConfig():
-    file = open("userConfig.txt", mode='r')
+    global BaseDirectory
+
+    try:
+        file = open("userConfig.txt", mode='r')
+    except:
+        serverLog.info("[*] userconfifConfig.txt, file not found")
+        return
+
     lines = file.readlines()
     file.close()
 
@@ -363,14 +383,18 @@ def loadUserConfig():
         authorizedUsers.append(userObject)
         serverLog.info("[+] New User added: %s" % user[0])
 
-
+    return
 
 
 # Load given Directory Configs
 def loadDirectoryConfig():
     global BaseDirectory
 
-    file = open("directoryConfig.txt", mode='r')
+    try:
+        file = open("directoryConfig.txt", mode='r')
+    except:
+        serverLog.info("[*] directoryConfig.txt, file not found")
+        return
     lines = file.readlines()
     file.close()
 
@@ -387,7 +411,8 @@ def loadDirectoryConfig():
 
         user = directory[0]
         name = directory[1]
-        path = defaultSystemPath + BaseDirectory + directory[2]
+        path = BaseDirectory + directory[2]
+        #print("Test, in loadDirctoryPath path: %s" %path)
 
         # Create User Object and Append to "authorizedUsers"
         directoryObject = Directory(name, user, path, True, True, True, True)
@@ -397,21 +422,26 @@ def loadDirectoryConfig():
         while i < len(authorizedUsers):
 
             # In User Class, append ownerDirectory
-            if authorizedUsers[i] == directoryObject.owner:
-                authorizedUsers[i].ownerDirectory.append()
+            if authorizedUsers[i].name == directoryObject.owner:
+                authorizedUsers[i].ownerDirectory.append(directoryObject)
                 os.mkdir(path)
-                serverLog.info("[+] Server loaded NEW directory\tUser: %s\tName:%s\tPath%s"
-                               % (user, name, path))
+                serverLog.info("[+] " + user + ", New directory add: " + BaseDirectory + directory[2])
+            i += 1
 
         # Else OWNER does not exist
-        print("Error, OWNER: does not exist")
+        if i > len(authorizedUsers):
+            print("Error, OWNER: does not exist")
 
 
 # Load given File Configs
 def loadFileConfig():
     global BaseDirectory
 
-    file = open("fileConfig.txt", mode='r')
+    try:
+        file = open("fileConfig.txt", mode='r')
+    except:
+        serverLog.info("[*] fileConfig.txt, file not found")
+        return
     lines = file.readlines()
     file.close()
 
@@ -427,7 +457,7 @@ def loadFileConfig():
 
         user = insertFile[0]
         name = insertFile[1]
-        path = defaultSystemPath + BaseDirectory + insertFile[2]
+        path = BaseDirectory + insertFile[2]
 
         # Create File Object and Append to "authorizedUsers"
         fileObject = File(name, user, path, True, True, True, True)
@@ -437,15 +467,114 @@ def loadFileConfig():
         while i < len(authorizedUsers):
 
             # In User Class, append ownerDirectory
-            if authorizedUsers[i] == fileObject.owner:
-                authorizedUsers[i].ownerFiles.append()
+            if authorizedUsers[i].name == fileObject.owner:
+                authorizedUsers[i].ownerFiles.append(fileObject)
                 open(path, "w")
-                serverLog.info("[+] Server loaded NEW file\tUser: %s\tName:%s\tPath%s"
-                               % (user, name, path))
+                serverLog.info("[+] " + user + ", New file add: " + BaseDirectory + insertFile[2])
+
+            i += 1
 
         # Else OWNER does not exist
-        print("Error, OWNER: does not exists")
+        if i > len(authorizedUsers):
+            print("Error, OWNER: does not exists")
 
+
+def printUserPermissions():
+
+    for i in authorizedUsers:
+
+        print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+        print("User: %s" %i.name)
+        print("Files owned:")
+        for files in i.ownerFiles:
+            print("\t", files.path)
+
+        print("\nDirectories Owned:")
+        for directories in i.ownerDirectory:
+            print("\t", directories.path)
+
+        print("\nOther File Permissions:")
+        for extraFiles in i.accessFiles:
+            print("\t", extraFiles.path)
+            print("\t\tRead: %s\n\t\tWrite: %s\n\t\tDelete: %s\n\t\tRename: %s"
+                  %( extraFiles.read, extraFiles.write, extraFiles.delete, extraFiles.rename))
+
+        print("\nOther Directories Permissions:")
+        for extraDirectory in i.accessDirectory:
+            print("\t", extraDirectory.path)
+            print("\tRead: %s\n\tWrite: %s\n\t\tDelete: %s\n\t\tRename: %s"
+            % (extraDirectory.read, extraDirectory.write, extraDirectory.delete, extraDirectory.rename))
+        print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+
+
+def updateDirectoryPermissions(listOfUsers, path, owner, name):
+
+
+
+
+
+    for auth in authorizedUsers:
+
+        y = 0
+        while y < len(listOfUsers):
+
+            if auth.name == listOfUsers[y]:
+
+                directoryObject = Directory(name, owner, path, list)
+                auth.accessDirectory.append(path)
+
+            y += 5
+
+# Load permissions for Users
+def loadPermissionConfig():
+    global BaseDirectory
+
+    try:
+        file = open("fileConfig.txt", mode='r')
+    except:
+        serverLog.info("[*] permissionConfig.txt, file not found")
+        return
+
+    lines = file.readlines()
+    file.close()
+
+    for line in lines:
+
+        # remove whitespaces, delimiters, append to authorizedUsers
+        line = line.strip()
+        permissionList = line.split(",")
+
+        if len(line) < 3:
+            print("Error: Loaded file is missing requirements")
+            continue
+
+        owner = permissionList[2]
+        objectType = permissionList[1]
+        fullPath = permissionList[0]
+
+        permissionList = permissionList[2:]
+
+        # Search existing users
+        for i in authorizedUsers:
+
+            # OWNER matches existing users
+            if i.name == owner:
+
+                # Search OWNER files
+                if objectType == "f":
+                    for files in i.ownerFiles:
+                        if files.path == defaultSystemPath + fullPath:
+
+                            print("ugh")
+
+                        else:
+                            print("Filepath does not exist: " + defaultSystemPath + fullPath)
+
+                elif objectType == "d":
+                    print("Ugh")
+
+                else:
+                    print("Invalid objectType for permission settings")
 
 # Main
 if __name__ == '__main__':
@@ -458,6 +587,8 @@ if __name__ == '__main__':
         loadUserConfig()
         loadDirectoryConfig()
         loadFileConfig()
+
+        printUserPermissions()
 
         """"
         # Set Server IP
