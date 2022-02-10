@@ -425,7 +425,7 @@ def loadDirectoryConfig():
             if authorizedUsers[i].name == directoryObject.owner:
                 authorizedUsers[i].ownerDirectory.append(directoryObject)
                 os.mkdir(path)
-                serverLog.info("[+] " + user + ", New directory add: " + BaseDirectory + directory[2])
+                serverLog.info("[+] " + user + " \tNew directory add:\t" + BaseDirectory + directory[2])
             i += 1
 
         # Else OWNER does not exist
@@ -470,7 +470,7 @@ def loadFileConfig():
             if authorizedUsers[i].name == fileObject.owner:
                 authorizedUsers[i].ownerFiles.append(fileObject)
                 open(path, "w")
-                serverLog.info("[+] " + user + ", New file add: " + BaseDirectory + insertFile[2])
+                serverLog.info("[+] " + user + " \tNew file add: " + BaseDirectory + insertFile[2])
 
             i += 1
 
@@ -502,9 +502,9 @@ def printUserPermissions():
         print("\nOther Directories Permissions:")
         for extraDirectory in i.accessDirectory:
             print("\t", extraDirectory.path)
-            print("\tRead: %s\n\tWrite: %s\n\t\tDelete: %s\n\t\tRename: %s"
+            print("\t\tRead: %s\n\t\ttWrite: %s\n\t\tDelete: %s\n\t\tRename: %s"
             % (extraDirectory.read, extraDirectory.write, extraDirectory.delete, extraDirectory.rename))
-        print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+        print("\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 
 
 def updateDirectoryPermissions(listOfUsers, path, owner, name):
@@ -538,7 +538,7 @@ def loadPermissionConfig():
     lines = file.readlines()
     file.close()
 
-    print("Before Lines")
+    # Test code remove print("Before Lines")
     for line in lines:
 
         # remove whitespaces, delimiters, append to authorizedUsers
@@ -549,7 +549,7 @@ def loadPermissionConfig():
             print("Error: Loaded file is missing requirements")
             continue
 
-        print("Length of split", len(permissionList))
+        # Tst code remove print("Length of split", len(permissionList))
         owner = permissionList[3]
         objectType = permissionList[2]
         path = permissionList[1]
@@ -557,7 +557,7 @@ def loadPermissionConfig():
 
         permissionList = permissionList[4:]
 
-        print("Seaching auth users")
+        # TEST code remove print("Seaching auth users")
         # Search existing users
         for i in authorizedUsers:
 
@@ -571,7 +571,7 @@ def loadPermissionConfig():
                         # file match
                         if files.path == path:
 
-                            print("Test, file match")
+                            # Test code remove print("Test, file match")
 
                             temporaryFiles = []
                             whogetsFile = []
@@ -591,16 +591,44 @@ def loadPermissionConfig():
                                 for toAppend in whogetsFile:
                                     if allUsers.name == toAppend:
                                         allUsers.accessFiles.append(temporaryFiles[0])
+                                        serverLog.info(
+                                            "[+] " + owner + " \tPERMISSION GIVEN TO: " + allUsers.name + "\t\tFile: " + temporaryFiles[0].path)
+
                                         temporaryFiles.pop(0)
                                         break
 
-                            print("ugh")
+                            # TEST code remove print("ugh")
 
                         else:
                             print("Filepath does not exist: " + defaultSystemPath + path)
 
                 elif objectType == "d":
-                    print("Ugh")
+                    for directory in i.ownerDirectory:
+
+                        # file match
+                        if directory.path == path:
+
+                            # Test code remove print("Test, file match")
+
+                            temporaryDirectory = []
+                            whogetsFile = []
+                            z = 0
+                            while z < len(permissionList):
+                                temporaryDirectory.append(File(name, owner, path,
+                                                           permissionList[z + 1],
+                                                           permissionList[z + 2],
+                                                           permissionList[z + 3],
+                                                           permissionList[z + 4]))
+
+                                whogetsFile.append(permissionList[z])
+                                z += 5
+
+                            for allUsers in authorizedUsers:
+                                for toAppend in whogetsFile:
+                                    if allUsers.name == toAppend:
+                                        allUsers.accessDirectory.append(temporaryDirectory[0])
+                                        temporaryDirectory.pop(0)
+                                        break
 
                 else:
                     print("Invalid objectType for permission settings")
@@ -616,7 +644,7 @@ if __name__ == '__main__':
         loadUserConfig()
         loadDirectoryConfig()
         loadFileConfig()
-        
+
         loadPermissionConfig()
         printUserPermissions()
 
