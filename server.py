@@ -5,6 +5,8 @@
 import os
 from typing import List
 
+import client
+
 try:
     import socketserver
 
@@ -39,7 +41,7 @@ import threading
 # Used for Sleeping
 import time
 
-#Used for Deleting files
+# Used for Deleting files
 import stat
 
 ###########################################################################
@@ -50,7 +52,6 @@ OS = platform.system()
 
 # Get executable path, replace '\' with '/'
 defaultSystemPath = os.getcwd().replace("\\", "/") + "/"
-
 
 # Base Directory
 BaseDirectory = "SEDFS_root/"
@@ -132,116 +133,41 @@ class fileServerHandler(socketserver.BaseRequestHandler):
         print(datetime.now().strftime("DATE: %Y:%m:%d\tTIME: %H:%M:%S\t\tEVENT: "), end="")
         serverLog.info("[+] SEDFS Handle Started")
 
-        # Receive USER info
-        user = self.request.recv(1024).decode()
+        # Send Server Greeting
+        self.request.sendall(
+            (self.client_address[0] + " >> Welcome to SEDFS server\nEnter Username and Password").encode())
 
-        # Log About received data
-        serverLog.info("[+] New Connection Made, IP: %s, Port: %s USER: %s" %
-                       (self.client_address[0], self.client_address[1], user))
+        # Call Logon Function
+        user = self.loginAttempt()
 
-        # Loop to look for USER
-        i = 0
-        while i < len(authorizedUsers):
-
-            if authorizedUsers[i] == user:
-                self.request.sendall("PASSWORD".encode())
-                break
-
-            i += 2
-
-        # if i > len(authorizedUsers) --> Then user does not exist
-        if i > len(authorizedUsers):
-            self.request.sendall("LOGIN_FAILED".encode())
-            serverLog.info("[+] LOGIN FAILED (Invalid USER), IP: %s, Port: %s USER: %s" %
-                           (self.client_address[0], self.client_address[1], user))
-            return
-
-        # PASSWORD response from client
-        password = self.request.recv(1024).decode()
-
-        # Else, "j" is within bounds of authorizedUsers
-        if password == authorizedUsers[i + 1]:
-            self.request.sendall("LOGIN_SUCCESS".encode())
-            serverLog.info("[+] LOGIN SUCCESS, IP: %s, Port: %s USER: %s" %
-                           (self.client_address[0], self.client_address[1], user))
-
-        else:
-            self.request.sendall("LOGIN_FAILED".encode())
-            serverLog.info("[+] LOGIN FAILED (Invalid PASSWORD), IP: %s, Port: %s USER: %s" %
-                           (self.client_address[0], self.client_address[1], user))
-            return
+        # IMPELEMENT SERVER FUNCTIONS HERE!!!
 
         # Get userRequest
-        request = self.request.recv(1024).decode()
-        request = request.split()
+        userRequest = self.request.recv(1024).decode()
+        while 1:
 
-        if request[0] == "WRITE":
-            print("Server WRITE not implemented / TESTED")
-            data = self.receiveALL()
-            serverLog.info("[+] '%s' WRITE REQUEST, IP: %s, Port: %s Message: %s" %
-                           (user, self.client_address[0], self.client_address[1], data))
+            # Write request
+            if userRequest == "WRITE":
+                self.request.sendall("SUCCESS".encode())
+                self.createNew(user)
+                userRequest = self.request.recv(1024).decode()
 
-            # Try WRITE new directory
-            if request[1] == "D":
+            # Read Request
+            elif userRequest == "READ":
+                print("Server WRITE not implemented / TESTED")
 
-                try:
+            elif userRequest == "LIST":
+                print("Server WRITE not implemented / TESTED")
 
-                    newDircAt = defaultSystemPath + BaseDirectory + request[3]
-                    print("Trying to make a directory at %s" %newDircAt)
-                    os.mkdir(newDircAt)
-                    print("Server Made new directory")
-                    print("%s" % newDircAt)
-                    self.request.sendall("SUCCESS, DIRECTORY CREATED".encode())
+            elif userRequest == "CREATE":
+                print("Server WRITE not implemented / TESTED")
 
-                except:
-                    print("server could not make directory %s", request[2])
-                    self.request.sendall("FAILED, DIRECTORY NOT CREATED".encode())
-                # success = BaseDirectory.makeNewDirectory(request[2], "", user)
+            elif userRequest == "CHANGE_PERMISSION":
+                print("Server WRITE not implemented / TESTED")
 
-                # if success:
-                # os.mkdir(request[2] + request[3])
-                # self.request.sendall("SUCCESS, DIRECTORY WAS CREATED")
-
-                # else:
-                # self.request.sendall("ERROR, INCORRECT NAME OR PATH")
-
-                # return
-
-            # Try WRITE new file
-            elif request[1] == "F":
-
-                success = BaseDirectory.makeNewFile(request[2], request[3], user)
-
-                if success:
-                    file = open(request[2] + "", "x")
-                    file.close()
-
-                else:
-                    self.request.sendall("ERROR, INCORRECT NAME OR PATH")
-
-                return
-
-            # else type is invalid
             else:
-                self.request.sendall("ERROR, INVALID TYPE")
-
-        elif request[0] == "READ":
-            print("Server WRITE not implemented / TESTED")
-
-        elif request[0] == "LIST":
-            print("Server WRITE not implemented / TESTED")
-
-        elif request[0] == "CREATE":
-            print("Server WRITE not implemented / TESTED")
-
-        elif request[0] == "CHANGE_PERMISSION":
-            print("Server WRITE not implemented / TESTED")
-
-        else:
-            print("Error: <%s> REQUEST <%s> NOT FOUND" % (user, request))
-            self.request.sendall("ERROR, NOT FOUND")
-
-        return
+                print("Error: <%s> REQUEST <%s> NOT FOUND" % (user, userRequest))
+                userRequest = self.request.recv(1024).decode()
 
     # Get the size of the next message in BYTES
     def receiveALL(self):
@@ -269,8 +195,87 @@ class fileServerHandler(socketserver.BaseRequestHandler):
 
             return totalData
 
+    # Return username on success
+    def loginAttempt(self):
+        # Loop login attempt until valid or closed
+        while 1:
 
+            # Recieve USERNAME and PASSWORD as list
+            user = self.request.recv(1024).decode()
+            user = user.split()
 
+            # Log login attempt
+            serverLog.info("[+] Login Attempt, IP: %s, Port: %s USER: %s" %
+                           (self.client_address[0], self.client_address[1], user[0]))
+
+            # Test USERNAME and PASSWORD
+            valid = getUserCred(user[0], user[1])
+
+            if valid:
+                self.request.sendall("LOGIN_SUCCESS".encode())
+                serverLog.info("[+] Login Success, IP: %s, Port: %s USER: %s" %
+                               (self.client_address[0], self.client_address[1], user[0]))
+
+                return user[0]
+
+            else:
+                self.request.sendall("LOGIN_FAILED".encode())
+                serverLog.info("[+] Login Failed, IP: %s, Port: %s USER: %s" %
+                               (self.client_address[0], self.client_address[1], user[0]))
+
+    def createNew(self, user):
+
+        path = self.request.recv(1024).decode()
+        print(path)
+        objectType = self.request.recv(1024).decode()
+        print(objectType)
+        name = self.request.recv(2014).decode()
+        print(name)
+
+        # Path - name
+        fullPath = defaultSystemPath + path
+
+        # Path + name
+        pathPlusName = fullPath + name
+
+        # Try WRITE new directory
+        if objectType == "D":
+
+            try:
+                print("Trying to make a directory at %s" % pathPlusName)
+                os.mkdir(pathPlusName)
+                os.chmod(pathPlusName,
+                         stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IWGRP | stat.S_IRGRP | stat.S_IXGRP | stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
+
+                serverLog.info("[+] '%s', IP: %s, SUCCESS CREATE directory at: %s" %
+                               (user, self.client_address[0], pathPlusName))
+                self.request.sendall("SUCCESS".encode())
+                return
+
+            except:
+                serverLog.info("[+] '%s', IP: %s, FAILED CREATE directory at: %s" %
+                               (user, self.client_address[0], pathPlusName))
+                self.request.sendall("FAILED".encode())
+                return
+
+        # Try WRITE new file
+        elif objectType == "F":
+
+            try:
+                file = open(pathPlusName, "x")
+                file.close()
+                serverLog.info("[+] '%s', IP: %s, SUCCESS CREATE file at: %s" %
+                           (user, self.client_address[0], pathPlusName))
+                self.request.sendall("SUCCESS".encode())
+                return
+
+            except:
+                serverLog.info("[+] '%s', IP: %s, FAILED CREATE file at: %s" %
+                              (user, self.client_address[0], pathPlusName))
+                self.request.sendall("FAILED")
+                return
+
+        print("Error in createNew, should not have reached this statement")
 
 ##############################################################################
 class User:
@@ -320,9 +325,22 @@ class File:
 # Non class functions
 ##############################################################################
 
+def getUserCred(username, password):
+    # Loop to look for USERNAME and PASSWORD match
+    i = 0
+    while i < len(authorizedUsers):
+
+        if authorizedUsers[i].name == username and authorizedUsers[i].password == password:
+            return True
+
+        i += 1
+
+    return False
+
+
 # Deletes ReadOnly Files
 def remove_on_error(path):
-#def remove_on_error(path):
+    # def remove_on_error(path):
     os.chmod(path, stat.S_IWRITE)
     os.unlink(path)
     return
@@ -340,12 +358,13 @@ def createBaseDirectory():
 
     if pathExists:
 
-        #if len(SEDFSpath) > 0 and SEDFSpath[-1] == "/" or SEDFSpath[-1] == "/":
-            #SEDFSpath = SEDFSpath[:-1]
+        # if len(SEDFSpath) > 0 and SEDFSpath[-1] == "/" or SEDFSpath[-1] == "/":
+        # SEDFSpath = SEDFSpath[:-1]
 
         serverLog.info("[*] SEDFS Directory found at: %s" % SEDFSpath)
 
-        os.chmod(SEDFSpath, stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IWGRP | stat.S_IRGRP | stat.S_IXGRP |stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
+        os.chmod(SEDFSpath,
+                 stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IWGRP | stat.S_IRGRP | stat.S_IXGRP | stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
         shutil.rmtree(SEDFSpath, ignore_errors=False, onerror=None)
         serverLog.info("[-] SEDFS Directory removed at: %s" % SEDFSpath)
 
@@ -356,7 +375,8 @@ def createBaseDirectory():
         path = os.path.join(defaultSystemPath, BaseDirectory)
         os.umask(777)
         os.makedirs(path, 0o777)
-        os.chmod(path, stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IWGRP | stat.S_IRGRP | stat.S_IXGRP |stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
+        os.chmod(path,
+                 stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IWGRP | stat.S_IRGRP | stat.S_IXGRP | stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
         serverLog.info("[+] SEDFS Directory created at: %s" % SEDFSpath)
 
     return
@@ -414,7 +434,7 @@ def loadDirectoryConfig():
         user = directory[0]
         name = directory[1]
         path = BaseDirectory + directory[2]
-        #print("Test, in loadDirctoryPath path: %s" %path)
+        # print("Test, in loadDirctoryPath path: %s" %path)
 
         # Create User Object and Append to "authorizedUsers"
         directoryObject = Directory(name, user, path, True, True, True, True)
@@ -488,11 +508,10 @@ def loadFileConfig():
 
 
 def printUserPermissions():
-
     for i in authorizedUsers:
 
         print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-        print("User: %s" %i.name)
+        print("User: %s" % i.name)
         print("Files owned:")
         for files in i.ownerFiles:
             print("\t", files.path)
@@ -505,33 +524,28 @@ def printUserPermissions():
         for extraFiles in i.accessFiles:
             print("\t", extraFiles.path)
             print("\t\tRead: %s\n\t\tWrite: %s\n\t\tDelete: %s\n\t\tRename: %s"
-                  %( extraFiles.read, extraFiles.write, extraFiles.delete, extraFiles.rename))
+                  % (extraFiles.read, extraFiles.write, extraFiles.delete, extraFiles.rename))
 
         print("\nOther Directories Permissions:")
         for extraDirectory in i.accessDirectory:
             print("\t", extraDirectory.path)
             print("\t\tRead: %s\n\t\ttWrite: %s\n\t\tDelete: %s\n\t\tRename: %s"
-            % (extraDirectory.read, extraDirectory.write, extraDirectory.delete, extraDirectory.rename))
+                  % (extraDirectory.read, extraDirectory.write, extraDirectory.delete, extraDirectory.rename))
         print("\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 
 
 def updateDirectoryPermissions(listOfUsers, path, owner, name):
-
-
-
-
-
     for auth in authorizedUsers:
 
         y = 0
         while y < len(listOfUsers):
 
             if auth.name == listOfUsers[y]:
-
                 directoryObject = Directory(name, owner, path, list)
                 auth.accessDirectory.append(path)
 
             y += 5
+
 
 # Load permissions for Users
 def loadPermissionConfig():
@@ -585,12 +599,11 @@ def loadPermissionConfig():
                             whogetsFile = []
                             z = 0
                             while z < len(permissionList):
-
                                 temporaryFiles.append(File(name, owner, path,
-                                                           permissionList[z+1],
-                                                           permissionList[z+2],
-                                                           permissionList[z+3],
-                                                           permissionList[z+4]))
+                                                           permissionList[z + 1],
+                                                           permissionList[z + 2],
+                                                           permissionList[z + 3],
+                                                           permissionList[z + 4]))
 
                                 whogetsFile.append(permissionList[z])
                                 z += 5
@@ -600,7 +613,8 @@ def loadPermissionConfig():
                                     if allUsers.name == toAppend:
                                         allUsers.accessFiles.append(temporaryFiles[0])
                                         serverLog.info(
-                                            "[+] " + owner + " \tPERMISSION GIVEN TO: " + allUsers.name + "\t\tFile: " + temporaryFiles[0].path)
+                                            "[+] " + owner + " \tPERMISSION GIVEN TO: " + allUsers.name + "\t\tFile: " +
+                                            temporaryFiles[0].path)
 
                                         temporaryFiles.pop(0)
                                         break
@@ -623,10 +637,10 @@ def loadPermissionConfig():
                             z = 0
                             while z < len(permissionList):
                                 temporaryDirectory.append(File(name, owner, path,
-                                                           permissionList[z + 1],
-                                                           permissionList[z + 2],
-                                                           permissionList[z + 3],
-                                                           permissionList[z + 4]))
+                                                               permissionList[z + 1],
+                                                               permissionList[z + 2],
+                                                               permissionList[z + 3],
+                                                               permissionList[z + 4]))
 
                                 whogetsFile.append(permissionList[z])
                                 z += 5
@@ -641,12 +655,12 @@ def loadPermissionConfig():
                 else:
                     print("Invalid objectType for permission settings")
 
+
 # Main
 if __name__ == '__main__':
 
     # If Python3 is setup, we can start server
     if OPERATE:
-
         # Create BaseDirectory, Load Users, Directories, Files
         createBaseDirectory()
         loadUserConfig()
@@ -655,8 +669,6 @@ if __name__ == '__main__':
 
         loadPermissionConfig()
         printUserPermissions()
-
-
 
         # Set Server IP
         serverHost = socket.gethostname()
