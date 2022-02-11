@@ -321,7 +321,8 @@ class File:
 ##############################################################################
 
 # Deletes ReadOnly Files
-def remove_on_error(function, path, exec_info):
+def remove_on_error(path):
+#def remove_on_error(path):
     os.chmod(path, stat.S_IWRITE)
     os.unlink(path)
     return
@@ -344,17 +345,18 @@ def createBaseDirectory():
 
         serverLog.info("[*] SEDFS Directory found at: %s" % SEDFSpath)
 
-        shutil.rmtree(SEDFSpath, onerror=remove_on_error)
+        os.chmod(SEDFSpath, stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IWGRP | stat.S_IRGRP | stat.S_IXGRP |stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
+        shutil.rmtree(SEDFSpath, ignore_errors=False, onerror=None)
         serverLog.info("[-] SEDFS Directory removed at: %s" % SEDFSpath)
 
         os.makedirs(SEDFSpath)
-        os.chmod(SEDFSpath, stat.S_IWRITE)
         serverLog.info("[+] SEDFS Directory created at: %s" % SEDFSpath)
 
     else:
         path = os.path.join(defaultSystemPath, BaseDirectory)
-        os.mkdir(path)
-        os.chmod(path, stat.S_IWRITE)
+        os.umask(777)
+        os.makedirs(path, 0o777)
+        os.chmod(path, stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IWGRP | stat.S_IRGRP | stat.S_IXGRP |stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
         serverLog.info("[+] SEDFS Directory created at: %s" % SEDFSpath)
 
     return
@@ -425,6 +427,9 @@ def loadDirectoryConfig():
             if authorizedUsers[i].name == directoryObject.owner:
                 authorizedUsers[i].ownerDirectory.append(directoryObject)
                 os.mkdir(path)
+                os.chmod(path,
+                         stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IWGRP | stat.S_IRGRP | stat.S_IXGRP | stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
+
                 serverLog.info("[+] " + user + " \tNew directory add:\t" + BaseDirectory + directory[2])
             i += 1
 
@@ -470,6 +475,9 @@ def loadFileConfig():
             if authorizedUsers[i].name == fileObject.owner:
                 authorizedUsers[i].ownerFiles.append(fileObject)
                 open(path, "w")
+                os.chmod(path,
+                         stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IWGRP | stat.S_IRGRP | stat.S_IXGRP | stat.S_IWOTH | stat.S_IROTH | stat.S_IXOTH)
+
                 serverLog.info("[+] " + user + " \tNew file add: " + BaseDirectory + insertFile[2])
 
             i += 1
@@ -649,7 +657,7 @@ if __name__ == '__main__':
         printUserPermissions()
 
 
-        """"
+
         # Set Server IP
         serverHost = socket.gethostname()
         serverIP = socket.gethostbyname(serverHost)
@@ -658,4 +666,3 @@ if __name__ == '__main__':
         startFileServer = fileServer(serverIP, fileServerHandler)
 
         startFileServer.serve_forever()
-        """
